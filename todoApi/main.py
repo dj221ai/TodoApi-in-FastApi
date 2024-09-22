@@ -1,0 +1,108 @@
+import models
+from fastapi import FastAPI, Depends, HTTPException, Path
+from sqlalchemy.orm import Session
+from database import engine, SessionLocal
+from typing import Annotated
+from models import Todos
+from starlette import status
+from pydantic import Field, BaseModel
+
+models.Base.metadata.create_all(bind=engine)
+
+app=FastAPI()
+
+
+# create dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+db_dependency = Annotated[Session, Depends(get_db)]
+
+
+# pydantic
+class TodoRequest(BaseModel):
+    title: str = Field(min_length=3)
+    description : str = Field(min_length=3, max_length=100)
+    priority: int = Field(gt=0, lt=6)
+    complete: bool
+
+@app.get("/", status_code=status.HTTP_200_OK)
+async def read_list(db: db_dependency):
+    return db.query(Todos).all()
+
+
+@app.get("/todo/{todo_id}/", status_code=status.HTTP_200_OK)
+async def read_by_id(db: db_dependency, todo_id: int = Path(gt=0)):
+    id_data = db.query(Todos).filter(todo_id == Todos.id).first()
+    if not id_data:
+        return HTTPException(status_code=404, detail="This id is not Available")
+    return id_data
+
+
+# @app.get("/todo/{priority_id}", status_code=status.HTTP_200_OK)
+# async def read_by_priorities(db: db_dependency, priority_id: int = Path(gt=0, lt=6)):
+#     priority_data = db.query(Todos).filter(priority_id == Todos.priority).all()
+#     if not priority_data:
+#         return HTTPException(status_code=404, detail="This priority id not available")
+#     return priority_data
+
+# query params
+@app.get("/todo/", status_code=status.HTTP_200_OK)
+async def read_by_priorities(db: db_dependency, priority_id: int = Path(gt=0, lt=6)):
+    priority_data = db.query(Todos).filter(Todos.priority == priority_id).all()
+    if not priority_data:
+        return HTTPException(status_code=404, detail="Data Not Found")
+    return priority_data
+
+
+@app.post("/todo/create", status_code=status.HTTP_201_CREATED)
+async def create_task(db:db_dependency, todo_data: TodoRequest):
+    # title = todo_data.title
+    # description = todo_data.description
+    # priority = todo_data.priority
+    # complete = todo_data.complete
+
+    todo_model = Todos(**todo_data.model_dump())
+    print("todo model???? ", todo_model)
+    quit()
+    db.add(todo_model)
+    db.commit()
+    # return 
+
+
+@app.put("/todo/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def edit_task(db: db_dependency, todo_data: TodoRequest, todo_id: int = Path(gt=0)):
+    todo_model = db.query(Todos).filter(Todos.id == todo_id).first()
+    if not todo_model:
+        return HTTPException(status_code=404, detail="Data not found")
+    todo_model.title         = todo_data.title
+    todo_model.description   = todo_data.description
+    todo_model.priority      = todo_data.priority
+    todo_model.complete      = todo_data.complete
+
+    db.add(todo_model)
+    db.commit()
+
+
+@app.delete("/todo/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_task(db: db_dependency, todo_data: TodoRequest, todo_id: int = Path(gt=0)):
+    todo_model = db.query(Todos).filter(Todos.id == todo_id).first()
+    if not todo_model:
+        return HTTPException(status_code=404, detail="Data Not found")
+    db.delete(todo_model)
+    db.commit()
+
+
+
+    
+
+
+
+
+
+
