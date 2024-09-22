@@ -6,10 +6,23 @@ from typing import Annotated
 from models import Todos
 from starlette import status
 from pydantic import Field, BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 models.Base.metadata.create_all(bind=engine)
 
 app=FastAPI()
+
+origins = [
+    "http://localhost:8000",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=['*'],
+    allow_headers=['*']
+)
 
 
 # create dependency
@@ -44,13 +57,6 @@ async def read_by_id(db: db_dependency, todo_id: int = Path(gt=0)):
     return id_data
 
 
-# @app.get("/todo/{priority_id}", status_code=status.HTTP_200_OK)
-# async def read_by_priorities(db: db_dependency, priority_id: int = Path(gt=0, lt=6)):
-#     priority_data = db.query(Todos).filter(priority_id == Todos.priority).all()
-#     if not priority_data:
-#         return HTTPException(status_code=404, detail="This priority id not available")
-#     return priority_data
-
 # query params
 @app.get("/todo/", status_code=status.HTTP_200_OK)
 async def read_by_priorities(db: db_dependency, priority_id: int = Path(gt=0, lt=6)):
@@ -62,17 +68,11 @@ async def read_by_priorities(db: db_dependency, priority_id: int = Path(gt=0, lt
 
 @app.post("/todo/create", status_code=status.HTTP_201_CREATED)
 async def create_task(db:db_dependency, todo_data: TodoRequest):
-    # title = todo_data.title
-    # description = todo_data.description
-    # priority = todo_data.priority
-    # complete = todo_data.complete
-
     todo_model = Todos(**todo_data.model_dump())
-    print("todo model???? ", todo_model)
-    quit()
     db.add(todo_model)
     db.commit()
-    # return 
+    db.refresh(todo_model)
+    return todo_model
 
 
 @app.put("/todo/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
