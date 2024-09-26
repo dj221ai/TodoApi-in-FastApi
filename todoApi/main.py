@@ -13,7 +13,7 @@ models.Base.metadata.create_all(bind=engine)
 app=FastAPI()
 
 origins = [
-    "http://localhost:8000",
+    '*',
 ]
 
 app.add_middleware(
@@ -21,7 +21,7 @@ app.add_middleware(
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=['*'],
-    allow_headers=['*']
+    allow_headers=['*'],
 )
 
 
@@ -44,9 +44,13 @@ class TodoRequest(BaseModel):
     priority: int = Field(gt=0, lt=6)
     complete: bool
 
+# @app.get("/", status_code=status.HTTP_200_OK)
+# async def read_list(db: db_dependency):
+#     return db.query(Todos).all()
 @app.get("/", status_code=status.HTTP_200_OK)
-async def read_list(db: db_dependency):
-    return db.query(Todos).all()
+async def read_list(db: db_dependency, skip: int = 0, limit: int = 10):
+    return db.query(Todos)[skip : skip + limit]
+    # return db.query(Todos).all()
 
 
 @app.get("/todo/{todo_id}", status_code=status.HTTP_200_OK)
