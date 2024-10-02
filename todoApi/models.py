@@ -11,7 +11,7 @@ class Todos(Base):
     title = Column(String, index=True)
     description = Column(String)
     # priority = Column(Integer)
-    complete = Column(Boolean, default=True)
+    complete = Column(Boolean, default=False)
 
 
 

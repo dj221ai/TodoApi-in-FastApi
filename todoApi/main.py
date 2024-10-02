@@ -41,24 +41,24 @@ db_dependency = Annotated[Session, Depends(get_db)]
 class TodoRequest(BaseModel):
     title: str = Field(min_length=3)
     description : str = Field(min_length=3, max_length=100)
-    priority: int = Field(gt=0, lt=6)
-    complete: bool
+    # priority: int = Field(gt=0, lt=6)
+    complete: bool = Field(default=False)
 
 # @app.get("/", status_code=status.HTTP_200_OK)
 # async def read_list(db: db_dependency):
 #     return db.query(Todos).all()
 @app.get("/", status_code=status.HTTP_200_OK)
-async def read_list(db: db_dependency, skip: int = 0, limit: int = 10):
+async def read_list(db: db_dependency, skip: int = 0, limit: int = 30):
     return db.query(Todos)[skip : skip + limit]
     # return db.query(Todos).all()
 
 
 @app.get("/todo/{todo_id}", status_code=status.HTTP_200_OK)
 async def read_by_id(db: db_dependency, todo_id: int = Path(gt=0)):
-    todo_model = db.query(Todos).filter(Todos.id == todo_id).first()
-    if not todo_model:
+    if todo_model := db.query(Todos).filter(Todos.id == todo_id).first():
+        return todo_model
+    else:
         return HTTPException(status_code=404, detail="This id is not Available")
-    return todo_model
 
 
 @app.post("/todo/create", status_code=status.HTTP_201_CREATED)
@@ -90,6 +90,16 @@ async def delete_task(db: db_dependency, todo_data: TodoRequest, todo_id: int = 
     if not todo_model:
         return HTTPException(status_code=404, detail="Data Not found")
     db.delete(todo_model)
+    db.commit()
+
+@app.delete("/todo/delete/",status_code=status.HTTP_204_NO_CONTENT)
+async def delete_all_data(db: db_dependency, todo_Data: TodoRequest):
+    todo_model = db.query(Todos).all()
+    if not todo_model:
+        return HTTPException(status_code=404, detail="No Data Found!")
+    for item in todo_model:
+        db.delete(item)
+    # db.delete(todo_model)
     db.commit()
 
 
